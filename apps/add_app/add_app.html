@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajouter une application</title>
+<style>
+body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: #0f172a;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+form {
+    background: #1e293b;
+    padding: 30px 40px;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 380px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+
+h3 {
+    text-align: center;
+    font-size: 1.6em;
+    color: #38bdf8;
+}
+
+label {
+    font-weight: 600;
+}
+
+input[type=file] {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #475569;
+    background: #1e293b;
+    color: #fff;
+}
+
+input[type=submit] {
+    padding: 14px;
+    background: #22d3ee;
+    border: none;
+    color: #0f172a;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 1em;
+}
+
+input[type=submit]:hover {
+    background: #06b6d4;
+    transform: scale(1.05);
+}
+
+#progressBar {
+    width: 100%;
+    background: #475569;
+    height: 16px;
+    border-radius: 8px;
+    overflow: hidden;
+    display: none;
+}
+
+#progressBar div {
+    height: 100%;
+    width: 0;
+    background: #22d3ee;
+    transition: width 0.3s;
+}
+
+#messageUpload {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1em;
+    margin-top: -5px;
+}
+
+#appPreview {
+    display: none;
+    margin-top: 15px;
+    text-align: center;
+    gap: 10px;
+    flex-direction: column;
+    align-items: center;
+}
+
+#appPreview img {
+    max-width: 80px;
+    max-height: 80px;
+    border-radius: 12px;
+    border: 2px solid #22d3ee;
+}
+
+#appPreview span {
+    margin-top: 5px;
+    font-weight: bold;
+    color: #38bdf8;
+    font-size: 1.1em;
+}
+</style>
+</head>
+<body>
+
+<form id="uploadForm" enctype="multipart/form-data">
+    <h3>Ajouter une application</h3>
+    
+    <label>Fichier ZIP de l'application :</label>
+    <input type="file" name="zip_file" accept=".zip" required>
+    
+    <div id="progressBar"><div></div></div>
+    
+    <input type="submit" value="Envoyer">
+    
+    <div id="messageUpload"></div>
+    
+    <div id="appPreview">
+        <img src="" alt="Icône de l'app">
+        <span id="appName"></span>
+    </div>
+</form>
+
+<script>
+// Upload avec progress bar + aperçu app installé
+document.getElementById('uploadForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const formData = new FormData(this);
+    const msg = document.getElementById('messageUpload');
+    const progressBar = document.getElementById('progressBar');
+    const progress = progressBar.firstElementChild;
+    const appPreview = document.getElementById('appPreview');
+    const appNameSpan = document.getElementById('appName');
+    const appIcon = appPreview.querySelector('img');
+
+    msg.style.color = '#fff';
+    msg.textContent = "Téléversement en cours…";
+    progressBar.style.display = 'block';
+    progress.style.width = '0%';
+    appPreview.style.display = 'none';
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'install_app.php', true);
+
+    xhr.upload.onprogress = function(e){
+        if(e.lengthComputable){
+            const percent = (e.loaded / e.total) * 100;
+            progress.style.width = percent + '%';
+        }
+    };
+
+    xhr.onload = function(){
+        progress.style.width = '100%';
+        const response = JSON.parse(xhr.responseText);
+        if(response.success){
+            msg.style.color = 'lightgreen';
+            msg.textContent = response.message;
+            appNameSpan.textContent = response.appName || '';
+            if(response.iconPath) appIcon.src = response.iconPath;
+            appPreview.style.display = 'flex';
+        } else {
+            msg.style.color = 'red';
+            msg.textContent = response.message;
+        }
+    };
+
+    xhr.onerror = function(){
+        msg.style.color = 'red';
+        msg.textContent = 'Erreur lors de l\'upload.';
+    };
+
+    xhr.send(formData);
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pulse IDE — Explorateur Droite + Onglets Dossiers Bas</title>
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/material-darker.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/solarized.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/dialog/dialog.min.css">
+<style>
+:root{--bg:#0f1720;--panel:#0b1220;--muted:#9aa5b1;--accent:#61afef;--surface:#111827;--danger:#e06c75;--success:#98c379;--fold-line:#3b82f6}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial;background:var(--bg);color:#e6eef6;display:flex;flex-direction:column}
+#app{display:flex;flex:1;overflow:hidden;min-height:0}
+.main-container{display:flex;flex:1;overflow:hidden;min-height:0}
+.editor-container{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.editor{flex:1;overflow-x:auto;overflow-y:auto;min-height:0}
+.CodeMirror{height:100%;overflow-x:auto;white-space:pre-wrap;word-wrap:break-word;max-width:100%;transition:background 0.2s}
+.CodeMirror-scroll{overflow-x:auto;max-width:100%}
+.right-panel{width:250px;background:#1E1E1E;border-left:1px solid #3C3C3C;display:flex;flex-direction:column;flex-shrink:0;transition:width 0.3s ease,opacity 0.3s ease}
+.right-panel.collapsed{width:0;opacity:0;overflow:hidden}
+@keyframes slideInRight{from{width:0;opacity:0}to{width:250px;opacity:1}}
+@keyframes slideOutRight{from{width:250px;opacity:1}to{width:0;opacity:0}}
+.right-panel:not(.collapsed){animation:slideInRight 0.3s ease forwards}
+.right-panel.collapsed{animation:slideOutRight 0.3s ease forwards}
+.brand{height:48px;display:flex;align-items:center;padding:0 8px;border-bottom:1px solid #3C3C3C}
+.brand .logo{width:32px;height:32px;border-radius:4px;background:linear-gradient(135deg,#569CD6,#264F78);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;margin-right:8px}
+.brand .title{font-family:'Fira Code',monospace;font-weight:600;font-size:14px;color:#D4D4D4}
+.brand .toggle-right-panel-btn{background:transparent;border:1px solid #3C3C3C;color:#858585;padding:4px 8px;border-radius:4px;cursor:pointer;margin-left:auto;transition:border-color 0.2s,color 0.2s,transform 0.2s}
+.brand .toggle-right-panel-btn:hover{border-color:#569CD6;color:#569CD6;transform:scale(1.05)}
+.search-bar{padding:8px;border-bottom:1px solid #3C3C3C}
+.search-bar input{width:100%;padding:6px 8px;border:1px solid #3C3C3C;border-radius:4px;background:#252526;color:#D4D4D4;font-family:'Fira Code',monospace;font-size:13px;transition:border-color 0.2s,box-shadow 0.2s}
+.search-bar input:focus{border-color:#569CD6;box-shadow:0 0 5px rgba(86,156,214,0.5)}
+.search-bar input::placeholder{color:#858585}
+.explorer{overflow-y:auto;padding:4px;background:#1E1E1E}
+.folder,.file{display:flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;cursor:pointer;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;color:#D4D4D4;transition:background 0.2s,transform 0.2s}
+.folder:hover,.file:hover{background:#264F78;transform:translateX(5px)}
+.entry-left{display:flex;align-items:center;gap:4px;flex:1}
+.icon{width:16px;height:16px;font-size:14px;text-align:center;margin-right:4px;display:inline-block;transition:transform 0.2s}
+.folder:hover .icon,.file:hover .icon{transform:scale(1.2)}
+.name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#D4D4D4;transition:color 0.2s}
+.folder-panel-container{display:flex;flex-direction:column;background:#1E1E1E;border-top:1px solid #3C3C3C;transition:height 0.3s ease}
+.folder-panel-container.collapsed{height:0;overflow:hidden}
+.folder-panel-top{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border-bottom:1px solid #3C3C3C;transition:background 0.2s}
+.folder-panel-top:hover{background:rgba(255,255,255,0.05)}
+.folder-panel{height:220px;overflow-y:auto;padding:4px 8px;font-size:13px;display:flex;flex-direction:column;background:#1E1E1E}
+.folder-tabs{display:flex;border-bottom:1px solid #3C3C3C;transition:background 0.2s}
+.folder-tab{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:4px 4px 0 0;background:#252526;color:#858585;cursor:pointer;white-space:nowrap;transition:background 0.2s,color 0.2s,transform 0.2s}
+.folder-tab.active{background:#1E1E1E;color:#D4D4D4;border-bottom:2px solid #569CD6;transform:scale(1.05)}
+.folder-tab:hover{transform:scale(1.05)}
+.folder-tab .close{margin-left:6px;font-size:12px;color:#858585;transition:color 0.2s,transform 0.2s}
+.folder-tab .close:hover{color:#D4D4D4;transform:rotate(90deg)}
+.toggle-folder-panel-btn,.restore-folder-panel-btn{background:transparent;border:1px solid #3C3C3C;color:#858585;padding:4px 8px;border-radius:4px;cursor:pointer;transition:border-color 0.2s,color 0.2s,transform 0.2s}
+.toggle-folder-panel-btn:hover,.restore-folder-panel-btn:hover{border-color:#569CD6;color:#569CD6;transform:scale(1.05)}
+.restore-folder-panel-btn{display:none;margin-left:auto}
+.topbar{height:auto;display:flex;flex-direction:column;border-bottom:1px solid rgba(255,255,255,.02);transition:background 0.2s}
+.tabs{display:flex;gap:6px;align-items:center;overflow-x:auto;padding:6px;transition:background 0.2s}
+.tab{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background 0.2s,color 0.2s,transform 0.2s}
+.tab.active{background:linear-gradient(90deg,rgba(97,175,239,.12),rgba(97,175,239,.04));color:#e9fbff;transform:scale(1.05)}
+.tab:hover{transform:scale(1.05)}
+.tab .close{margin-left:6px;font-size:12px;color:var(--muted);transition:color 0.2s,transform 0.2s}
+.tab .close:hover{transform:rotate(90deg)}
+.action-buttons{display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px;transition:background 0.2s}
+.btn{background:transparent;border:1px solid rgba(255,255,255,.03);padding:6px 10px;border-radius:6px;color:var(--muted);cursor:pointer;white-space:nowrap;transition:.2s,transform 0.2s}
+.btn:hover{border-color:var(--accent);color:var(--accent);transform:scale(1.05)}
+select.btn,input.btn{background:var(--panel);color:var(--muted);transition:background 0.2s,color 0.2s,transform 0.2s}
+select.btn:hover,input.btn:hover{transform:scale(1.05)}
+select.btn option{background:var(--panel);color:#e6eef6}
+.CodeMirror-foldgutter{width:15px;background:rgba(255,255,255,.05);transition:background 0.2s}
+.CodeMirror-foldgutter-open,.CodeMirror-foldgutter-folded{cursor:pointer;color:var(--fold-line);transition:color 0.2s}
+.CodeMirror-foldgutter-open:after{content:"▼"}
+.CodeMirror-foldgutter-folded:after{content:"▶"}
+.CodeMirror-foldmarker{color:var(--fold-line);background:rgba(59,130,246,.1);transition:background 0.2s,color 0.2s}
+.cm-block-range{background:rgba(97,175,239,.05);transition:background 0.2s}
+.cm-search-match{background:rgba(255,255,0,.2);color:#000;transition:background 0.2s,color 0.2s}
+.cm-highlight-line{background:rgba(97,175,239,0.3);transition:background 0.2s}
+.statusbar{height:28px;display:flex;align-items:center;gap:10px;padding:0 10px;border-top:1px solid rgba(255,255,255,.02);font-size:13px;color:var(--muted);background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(255,255,255,.01));transition:background 0.2s,color 0.2s}
+.status-right{margin-left:auto;display:flex;gap:12px;align-items:center}
+.unsaved{color:var(--danger);font-weight:600}
+.context-menu{position:absolute;background:#1E1E1E;border:1px solid #3C3C3C;border-radius:4px;padding:4px 0;display:none;z-index:1000;min-width:160px;box-shadow:0 2px 10px rgba(0,0,0,.5);transition:opacity 0.2s,transform 0.2s}
+.context-menu .item{padding:6px 12px;cursor:pointer;color:#D4D4D4;transition:background 0.2s,color 0.2s,transform 0.2s}
+.context-menu .item:hover{background:#264F78;color:#569CD6;transform:translateX(5px)}
+.search-result{padding:4px 8px;cursor:pointer;transition:background 0.2s,transform 0.2s}
+.search-result:hover{background:#264F78;transform:scale(1.02)}
+.search-result pre{margin:4px 0;font-family:'Fira Code',monospace;font-size:13px;white-space:pre-wrap;transition:background 0.2s}
+.search-line{padding:2px 4px;border-radius:4px;transition:background 0.2s,transform 0.2s}
+.search-line:hover{background:#264F78;transform:translateX(3px)}
+#breadcrumb{padding:4px 8px;font-size:12px;color:#858585;border-bottom:1px solid #3C3C3C;transition:background 0.2s}
+#breadcrumb span{cursor:pointer;transition:color 0.2s,transform 0.2s}
+#breadcrumb span:hover{color:#569CD6;transform:scale(1.1)}
+#folderTabTop{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border-bottom:1px solid #3C3C3C;transition:background 0.2s}
+#backBtn{background:transparent;border:1px solid #3C3C3C;color:#858585;padding:4px 8px;border-radius:4px;cursor:pointer;transition:border-color 0.2s,color 0.2s,transform 0.2s}
+#backBtn:hover{border-color:#569CD6;color:#569CD6;transform:scale(1.05)}
+#folderTabContent{position:relative;padding-left:20px}
+#folderTabContent.has-files::before{content:'';position:absolute;left:10px;top:0;bottom:0;width:2px;background:#3C3C3C;opacity:0.7}
+#folderTabContent .folder,#folderTabContent .file{position:relative;padding-left:20px}
+#folderTabContent .folder::before,#folderTabContent .file::before{content:'';position:absolute;left:-5px;top:50%;width:10px;height:1px;background:#3C3C3C;opacity:0.7;transform:translateY(-50%)}
+@media (max-width:900px){.right-panel{width:200px}.brand .title{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="main-container">
+    <div class="editor-container">
+      <div class="topbar">
+        <div class="tabs" id="tabs"></div>
+        <div class="action-buttons">
+          <button id="newFileBtn" class="btn">📄 Nouveau fichier</button>
+          <button id="newFolderBtn" class="btn">📁 Nouveau dossier</button>
+          <button id="renameBtn" class="btn">✏️ Renommer</button>
+          <button id="deleteBtn" class="btn">🗑️ Supprimer</button>
+          <button id="saveAllBtn" class="btn">💾 Sauvegarder tout</button>
+          <select id="modeSelect" class="btn">
+            <option value="php">PHP</option>
+            <option value="htmlmixed">HTML</option>
+            <option value="css">CSS</option>
+            <option value="javascript">JavaScript</option>
+            <option value="xml">XML</option>
+            <option value="clike">C/C++</option>
+            <option value="python">Python</option>
+            <option value="markdown">Markdown</option>
+            <option value="application/json">JSON</option>
+            <option value="text/plain">Plain Text</option>
+          </select>
+          <select id="themeSelect" class="btn">
+            <option value="material-darker">Material Darker</option>
+            <option value="monokai">Monokai</option>
+            <option value="dracula">Dracula</option>
+            <option value="solarized dark">Solarized Dark</option>
+          </select>
+          <button id="searchBtn" class="btn">🔍 Rechercher dans fichier</button>
+          <input id="globalSearchInput" type="text" placeholder="Rechercher dans onglets ouverts" class="btn">
+        </div>
+      </div>
+      <div class="editor" id="editorHost"><div id="editor"></div></div>
+      <div class="folder-panel-container" id="folderPanelContainer">
+        <div class="folder-panel-top">
+          <span id="folderPath">Résultats de recherche</span>
+          <button id="toggleFolderPanelBtn" class="toggle-folder-panel-btn">▲</button>
+        </div>
+        <div class="folder-panel" id="folderPanel"></div>
+      </div>
+      <button id="restoreFolderPanelBtn" class="restore-folder-panel-btn">▼</button>
+      <div class="statusbar">
+        <div id="statusPath">Aucun fichier ouvert</div>
+        <div id="statusInfo" class="status-right">
+          <div id="statusLang">—</div>
+          <div id="statusEncoding">UTF-8</div>
+          <div id="statusSaved">✓</div>
+        </div>
+      </div>
+    </div>
+    <aside class="right-panel" id="rightPanel">
+      <div class="brand">
+        <div class="logo">P</div>
+        <div class="title">Pulse IDE</div>
+        <button id="toggleRightPanelBtn" class="toggle-right-panel-btn">◄</button>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="explorerSearchInput" placeholder="Rechercher dans l'arborescence...">
+      </div>
+      <div class="explorer">
+        <div id="breadcrumb">/</div>
+        <div id="fileTree">Chargement...</div>
+      </div>
+      <div class="folder-panel-container" id="folderTabContainer">
+        <div id="folderTabTop">
+          <span id="folderTabPath">Dossier</span>
+          <button id="backBtn" class="btn">⬅ Retour</button>
+        </div>
+        <div class="folder-tabs" id="folderTabs"></div>
+        <div class="folder-panel" id="folderTabContent"></div>
+      </div>
+      <button id="restoreFolderTabBtn" class="restore-folder-panel-btn">▼</button>
+    </aside>
+  </div>
+</div>
+<div id="contextMenu" class="context-menu">
+  <div class="item" data-action="open">✏️ Modifier</div>
+  <div class="item" data-action="rename">🖊️ Renommer</div>
+  <div class="item" data-action="delete">🗑️ Supprimer</div>
+  <div class="item" data-action="cut">✂️ Couper</div>
+  <div class="item" data-action="copy">📋 Copier</div>
+  <div class="item" data-action="paste">📥 Coller / Déplacer</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/php/php.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/markdown/markdown.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closetag.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/brace-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/xml-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/indent-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/markdown-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/comment-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/searchcursor.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/search.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/dialog/dialog.min.js"></script>
+<script>
+console.log('Script loaded, initializing (right explorer, folder tabs bottom, icons, vertical cursor)...');
+const API_BASE = 'explorer.php';
+let tabs = [];
+let activeTabId = null;
+let folderTabs = [];
+let activeFolderTabId = null;
+let currentPath = '';
+let clipboard = null;
+let selectedEntry = null;
+let highlightedLineMarker = null;
+const $ = s => document.querySelector(s),
+      $all = s => Array.from(document.querySelectorAll(s));
+const treeCache = new Map();
+const iconMap = {
+  'folder': '📁',
+  '.php': '🐘',
+  '.phtml': '🐘',
+  '.html': '🌐',
+  '.htm': '🌐',
+  '.css': '🎨',
+  '.scss': '🎨',
+  '.js': '🟨',
+  '.mjs': '🟨',
+  '.json': '📋',
+  '.c': '🔧',
+  '.cpp': '🔧',
+  '.h': '🔧',
+  '.py': '🐍',
+  '.md': '📝',
+  'default': '📄'
+};
+let cm;
+try {
+  cm = CodeMirror(document.getElementById('editor'), {
+    value: '// Sélectionnez un fichier à éditer\n',
+    mode: 'text/plain',
+    theme: 'material-darker',
+    lineNumbers: true,
+    autoCloseTags: true,
+    autoCloseBrackets: true,
+    matchBrackets: true,
+    foldGutter: true,
+    gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+    lineWrapping: true,
+    extraKeys: {
+      "Ctrl-Space": "autocomplete",
+      "Ctrl-F": "findPersistent"
+    }
+  });
+  cm.setSize('100%','100%');
+  console.log('CodeMirror initialized with auto-close, fold gutter, and line wrapping');
+}catch(e){
+  console.error('CodeMirror initialization error:',e);
+  alert('Erreur lors de l\'initialisation de l\'éditeur: '+e.message);
+}
+cm.on('change',()=>{
+  if(activeTabId){
+    const tab=tabs.find(t=>t.id===activeTabId);
+    if(tab&&tab.type==='file'){
+      tab.content=cm.getValue();
+      tab.saved=false;
+      updateBlockMarkers(tab);
+      setStatus(tab.path+'/'+tab.name,tab.mode,tab.saved);
+      const globalSearchInput=$('#globalSearchInput');
+      if(globalSearchInput.value)searchInOpenTabs(globalSearchInput.value);
+    }
+  }
+  ensureRightPanelVisible('CodeMirror change');
+});
+cm.on('refresh',()=>{
+  console.log('CodeMirror refresh event triggered');
+  ensureRightPanelVisible('CodeMirror refresh');
+});
+cm.on('viewportChange',()=>{
+  console.log('CodeMirror viewportChange event triggered');
+  ensureRightPanelVisible('CodeMirror viewportChange');
+});
+function updateBlockMarkers(tab){
+  if(!tab||tab.type!=='file')return;
+  if(tab.markers){
+    tab.markers.forEach(marker=>marker.clear());
+    tab.markers=[];
+  }else{
+    tab.markers=[];
+  }
+  const mode=tab.mode;
+  const doc=cm.getDoc();
+  const lines=doc.getValue().split('\n');
+  let blockStart=null;
+  let depth=0;
+  const maxLineLength=Math.max(...lines.map(line=>line.length));
+  if(maxLineLength>1000){
+    console.warn('Long line detected, length:',maxLineLength);
+    cm.refresh();
+  }
+  if(mode==='php'||mode==='htmlmixed'||mode==='xml'){
+    lines.forEach((line,i)=>{
+      const openMatch=line.match(/<([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>/);
+      const closeMatch=line.match(/<\/([a-zA-Z][a-zA-Z0-9]*)>/);
+      if(openMatch&&!line.includes('/>')){
+        if(blockStart===null)blockStart={line:i,ch:line.indexOf(openMatch[0])};
+        depth++;
+      }else if(closeMatch&&blockStart!==null){
+        depth--;
+        if(depth===0){
+          const marker=doc.markText(
+            {line:blockStart.line,ch:blockStart.ch},
+            {line:i,ch:line.indexOf(closeMatch[0])+closeMatch[0].length},
+            {className:'cm-block-range'}
+          );
+          tab.markers.push(marker);
+          blockStart=null;
+        }
+      }
+    });
+  }else if(mode==='javascript'||mode==='clike'||mode==='python'){
+    lines.forEach((line,i)=>{
+      const openBrace=line.match(/[\{\[\(]/);
+      const closeBrace=line.match(/[\}\]\)]/);
+      if(openBrace){
+        if(blockStart===null)blockStart={line:i,ch:line.indexOf(openBrace[0])};
+        depth++;
+      }else if(closeBrace&&blockStart!==null){
+        depth--;
+        if(depth===0){
+          const marker=doc.markText(
+            {line:blockStart.line,ch:blockStart.ch},
+            {line:i,ch:line.indexOf(closeBrace[0])+1},
+            {className:'cm-block-range'}
+          );
+          tab.markers.push(marker);
+          blockStart=null;
+        }
+      }
+    });
+  }
+  ensureRightPanelVisible('updateBlockMarkers');
+}
+function uid(){return Math.random().toString(36).slice(2,9);}
+function setStatus(path,lang,saved){
+  $('#statusPath').textContent=path||'Aucun fichier ouvert';
+  $('#statusLang').textContent=typeof lang==='string'?lang:(lang&&lang.name)?lang.name:'—';
+  $('#statusSaved').textContent=saved?'✓':'●';
+  $('#statusSaved').className=saved?'':'unsaved';
+  ensureRightPanelVisible('setStatus');
+}
+function detectMode(name){
+  if(!name)return'text/plain';
+  const n=name.toLowerCase();
+  const modeMap={
+    '.php':'php',
+    '.phtml':'php',
+    '.html':'htmlmixed',
+    '.htm':'htmlmixed',
+    '.css':'css',
+    '.scss':'css',
+    '.js':'javascript',
+    '.mjs':'javascript',
+    '.json':'application/json',
+    '.c':'clike',
+    '.cpp':'clike',
+    '.h':'clike',
+    '.py':'python',
+    '.md':'markdown'
+  };
+  for(const ext in modeMap){
+    if(n.endsWith(ext))return modeMap[ext];
+  }
+  return'text/plain';
+}
+function getIcon(name, isDir){
+  if(isDir)return iconMap['folder'];
+  const n=name.toLowerCase();
+  for(const ext in iconMap){
+    if(ext!=='folder'&&ext!=='default'&&n.endsWith(ext))return iconMap[ext];
+  }
+  return iconMap['default'];
+}
+async function apiList(path=''){
+  if(treeCache.has(path)){
+    console.log('Using cached tree for path:',path);
+    return treeCache.get(path);
+  }
+  try{
+    const res=await fetch(`${API_BASE}?action=list&path=${encodeURIComponent(path)}`);
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    const data=await res.json();
+    treeCache.set(path,data);
+    return data;
+  }catch(e){
+    console.error('apiList error:',e);
+    return{error:e.message};
+  }
+}
+async function apiRead(path,file){
+  try{
+    const res=await fetch(`${API_BASE}?action=read&path=${encodeURIComponent(path)}&file=${encodeURIComponent(file)}`);
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return await res.json();
+  }catch(e){
+    console.error('apiRead error:',e);
+    return{error:e.message};
+  }
+}
+async function apiWrite(path,file,content){
+  try{
+    const body=`action=write&path=${encodeURIComponent(path)}&file=${encodeURIComponent(file)}&content=${encodeURIComponent(content)}`;
+    const res=await fetch(API_BASE,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return await res.json();
+  }catch(e){
+    console.error('apiWrite error:',e);
+    return{error:e.message};
+  }
+}
+async function apiMkdir(path,name){
+  try{
+    const body=`action=mkdir&path=${encodeURIComponent(path)}&name=${encodeURIComponent(name)}`;
+    const res=await fetch(API_BASE,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    treeCache.delete(path);
+    return await res.json();
+  }catch(e){
+    console.error('apiMkdir error',e);
+    return{error:e.message};
+  }
+}
+async function apiTrash(path,name){
+  try{
+    const body=`action=trash&path=${encodeURIComponent(path)}&name=${encodeURIComponent(name)}`;
+    const res=await fetch(API_BASE,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    treeCache.delete(path);
+    return await res.json();
+  }catch(e){
+    console.error('apiTrash error',e);
+    return{error:e.message};
+  }
+}
+async function apiRename(path,oldName,newName){
+  try{
+    const body=`action=rename&path=${encodeURIComponent(path)}&oldName=${encodeURIComponent(oldName)}&newName=${encodeURIComponent(newName)}`;
+    const res=await fetch(API_BASE,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    treeCache.delete(path);
+    return await res.json();
+  }catch(e){
+    console.error('apiRename error',e);
+    return{error:e.message};
+  }
+}
+async function apiCopy(path,name){
+  try{
+    const body=`action=copy&path=${encodeURIComponent(path)}&name=${encodeURIComponent(name)}`;
+    const res=await fetch(API_BASE,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return await res.json();
+  }catch(e){
+    console.error('apiCopy error:',e);
+    return{error:e.message};
+  }
+}
+async function apiCut(path,name){
+  try{
+    const body=`action=cut&path=${encodeURIComponent(path)}&name=${encodeURIComponent(name)}`;
+    const res=await fetch(API_BASE,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return await res.json();
+  }catch(e){
+    console.error('apiCut error:',e);
+    return{error:e.message};
+  }
+}
+async function apiPaste(path){
+  try{
+    const body=`action=paste&path=${encodeURIComponent(path)}`;
+    const res=await fetch(API_BASE,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    treeCache.delete(path);
+    return await res.json();
+  }catch(e){
+    console.error('apiPaste error',e);
+    return{error:e.message};
+  }
+}
+const fileTreeEl=$('#fileTree');
+const folderPanelContainer=$('#folderPanelContainer');
+const folderPanel=$('#folderPanel');
+const folderPathEl=$('#folderPath');
+const globalSearchInput=$('#globalSearchInput');
+const explorerSearchInput=$('#explorerSearchInput');
+const folderTabsEl=$('#folderTabs');
+const folderTabContentEl=$('#folderTabContent');
+const folderTabPathEl=$('#folderTabPath');
+const backBtn=$('#backBtn');
+function updateBreadcrumb(path){
+  console.log('Updating breadcrumb for path:',path);
+  const bc=$('#breadcrumb');
+  bc.innerHTML='';
+  const parts=path.split('/').filter(p=>p);
+  let full='';
+  const root=document.createElement('span');
+  root.textContent='/';
+  root.onclick=()=>{console.log('Navigating to root');buildTree('');};
+  bc.appendChild(root);
+  parts.forEach(p=>{
+    full+=(full?'/':'')+p;
+    const s=document.createElement('span');
+    s.textContent=' / '+p;
+    s.onclick=()=>{console.log('Navigating to:',full);buildTree(full);};
+    bc.appendChild(s);
+  });
+  ensureRightPanelVisible('updateBreadcrumb');
+}
+function selectEntry(el){
+  console.log('Selecting entry:',el.querySelector('.name')?.textContent||el.textContent);
+  $all('.file,.folder,.search-line').forEach(x=>x.style.background='');
+  el.style.background='rgba(97,175,239,0.2)';
+  selectedEntry=el;
+  ensureRightPanelVisible('selectEntry');
+}
+async function buildTree(path=''){
+  console.log('Building tree for path:',path);
+  const files=await apiList(path);
+  if(!files||files.error){
+    console.error('Error loading tree:',files?.error||'Unknown error');
+    fileTreeEl.innerHTML='<em>Erreur</em>';
+    return;
+  }
+  currentPath=path;
+  updateBreadcrumb(currentPath);
+  fileTreeEl.innerHTML='';
+  const query=explorerSearchInput.value.toLowerCase();
+  const filteredFiles=query?files.filter(f=>f.name.toLowerCase().includes(query)):files;
+  const folders=filteredFiles.filter(f=>f.isDir);
+  folders.sort((a,b)=>a.name.localeCompare(b.name));
+  folders.forEach(f=>{
+    const entry=document.createElement('div');
+    entry.className='folder';
+    entry.style.paddingLeft='8px';
+    const left=document.createElement('div');left.className='entry-left';
+    const icon=document.createElement('span');icon.className='icon';icon.textContent=getIcon(f.name,true);
+    const nameEl=document.createElement('span');nameEl.className='name';nameEl.textContent=f.name;nameEl.title=f.name;
+    left.appendChild(icon);left.appendChild(nameEl);
+    entry.appendChild(left);
+    fileTreeEl.appendChild(entry);
+    entry.onclick=async(e)=>{
+      e.stopPropagation();
+      console.log('Folder clicked:',f.name);
+      selectEntry(entry);
+      const folderPath=path?path+'/'+f.name:f.name;
+      createFolderTab(folderPath,f.name);
+      ensureRightPanelVisible('folder click');
+    };
+    entry.addEventListener('contextmenu',e=>{
+      e.preventDefault();
+      console.log('Context menu on folder:',f.name);
+      selectEntry(entry);
+      showContextMenu(e,f.name,true,path);
+    });
+  });
+  const fileEntries=filteredFiles.filter(f=>!f.isDir);
+  fileEntries.sort((a,b)=>a.name.localeCompare(b.name));
+  fileEntries.forEach(f=>{
+    const entry=document.createElement('div');
+    entry.className='file';
+    entry.style.paddingLeft='8px';
+    const left=document.createElement('div');left.className='entry-left';
+    const icon=document.createElement('span');icon.className='icon';icon.textContent=getIcon(f.name,false);
+    const nameEl=document.createElement('span');nameEl.className='name';nameEl.textContent=f.name;nameEl.title=f.name;
+    left.appendChild(icon);left.appendChild(nameEl);
+    entry.appendChild(left);
+    fileTreeEl.appendChild(entry);
+    entry.onclick=async()=>{
+      console.log('File clicked:',path,f.name);
+      selectEntry(entry);
+      const data=await apiRead(path,f.name);
+      if(!data.error){
+        createFileTab(path,f.name,data.content);
+      }else{
+        console.error('Error reading file:',data.error);
+      }
+    };
+    entry.addEventListener('contextmenu',e=>{
+      e.preventDefault();
+      console.log('Context menu on file:',f.name);
+      selectEntry(entry);
+      showContextMenu(e,f.name,false,path);
+    });
+  });
+  ensureRightPanelVisible('buildTree');
+}
+function ensureRightPanelVisible(source){
+  const panel=$('#rightPanel');
+  const toggleBtn=$('#toggleRightPanelBtn');
+  if(panel.classList.contains('collapsed')){
+    console.warn(`Right panel was collapsed unexpectedly by ${source}, restoring visibility`);
+    panel.classList.remove('collapsed');
+    toggleBtn.textContent='◄';
+    panel.style.display='flex';
+    panel.style.opacity='1';
+    panel.style.width='250px';
+  }
+  const editorEl=$('.editor');
+  const editorBounds=editorEl.getBoundingClientRect();
+  const panelBounds=panel.getBoundingClientRect();
+  if(editorBounds.right>panelBounds.left){
+    console.warn('Editor is overflowing into right panel, adjusting...');
+    editorEl.style.maxWidth=`${panelBounds.left-editorBounds.left}px`;
+  }
+  panel.offsetHeight;
+  const app=$('#app');
+  app.style.display='flex';
+  app.offsetHeight;
+}
+function monitorRightPanel(){
+  const panel=$('#rightPanel');
+  const observer=new MutationObserver((mutations)=>{
+    mutations.forEach(mutation=>{
+      if(mutation.type==='attributes'&&mutation.attributeName==='class'){
+        if(panel.classList.contains('collapsed')){
+          console.warn('Right panel collapsed detected via MutationObserver, restoring visibility');
+          panel.classList.remove('collapsed');
+          $('#toggleRightPanelBtn').textContent='◄';
+          panel.style.display='flex';
+          panel.style.opacity='1';
+          panel.style.width='250px';
+          panel.offsetHeight;
+        }
+      }
+    });
+  });
+  observer.observe(panel,{attributes:true,attributeFilter:['class']});
+  setInterval(()=>{
+    if(panel.classList.contains('collapsed')){
+      console.warn('Right panel collapsed detected via interval check, restoring visibility');
+      panel.classList.remove('collapsed');
+      $('#toggleRightPanelBtn').textContent='◄';
+      panel.style.display='flex';
+      panel.style.opacity='1';
+      panel.style.width='250px';
+      panel.offsetHeight;
+    }
+  },500);
+}
+document.addEventListener('click',e=>{
+  console.log('Click event detected on:',e.target.tagName,e.target.id||e.target.className);
+  ensureRightPanelVisible('document click');
+});
+function createFolderTab(path,name){
+  console.log('Creating folder tab for:',path,name);
+  const existing=folderTabs.find(t=>t.path===path);
+  if(existing){
+    console.log('Folder tab already exists, activating:',existing.id);
+    activateFolderTab(existing.id);
+    return;
+  }
+  const id=uid();
+  const tab={id,path,name};
+  folderTabs.push(tab);
+  console.log('New folder tab created, total:',folderTabs.length);
+  refreshFolderTabsDom();
+  activateFolderTab(id);
+}
+function renderFolderTabElement(tab){
+  const tabEl=document.createElement('div');
+  tabEl.className='folder-tab'+(tab.id===activeFolderTabId?' active':'');
+  tabEl.id='folder-tab-'+tab.id;
+  const icon=document.createElement('span');icon.className='icon';icon.textContent=iconMap['folder'];
+  const label=document.createElement('span');
+  label.textContent=tab.name;
+  tabEl.appendChild(icon);
+  tabEl.appendChild(label);
+  const close=document.createElement('span');close.className='close';close.textContent='×';
+  close.onclick=e=>{
+    e.stopPropagation();
+    console.log('Closing folder tab:',tab.id);
+    closeFolderTab(tab.id);
+  };
+  tabEl.appendChild(close);
+  tabEl.onclick=()=>{
+    console.log('Activating folder tab:',tab.id);
+    activateFolderTab(tab.id);
+  };
+  return tabEl;
+}
+function refreshFolderTabsDom(){
+  console.log('Refreshing folder tabs, total:',folderTabs.length);
+  folderTabsEl.innerHTML='';
+  folderTabs.forEach(t=>folderTabsEl.appendChild(renderFolderTabElement(t)));
+  ensureRightPanelVisible('refreshFolderTabsDom');
+}
+async function activateFolderTab(id){
+  console.log('Activating folder tab:',id);
+  folderTabs.forEach(t=>{const el=$('#folder-tab-'+t.id);if(el)el.classList.remove('active');});
+  const tab=folderTabs.find(t=>t.id===id);
+  if(!tab){
+    console.error('Folder tab not found:',id);
+    return;
+  }
+  const el=$('#folder-tab-'+id);
+  if(el)el.classList.add('active');
+  activeFolderTabId=id;
+  folderTabContentEl.innerHTML='Chargement...';
+  folderTabContentEl.classList.remove('has-files');
+  const files=await apiList(tab.path);
+  if(!files||files.error){
+    console.error('Error loading folder content:',files?.error||'Unknown error');
+    folderTabContentEl.innerHTML='<em>Erreur</em>';
+    return;
+  }
+  folderTabContentEl.innerHTML='';
+  const folders=files.filter(f=>f.isDir);
+  folders.sort((a,b)=>a.name.localeCompare(b.name));
+  const fileEntries=files.filter(f=>!f.isDir);
+  if(fileEntries.length>0){
+    folderTabContentEl.classList.add('has-files');
+  }
+  folders.forEach(f=>{
+    const entry=document.createElement('div');
+    entry.className='folder';
+    entry.style.paddingLeft='20px';
+    const left=document.createElement('div');left.className='entry-left';
+    const icon=document.createElement('span');icon.className='icon';icon.textContent=getIcon(f.name,true);
+    const nameEl=document.createElement('span');nameEl.className='name';nameEl.textContent=f.name;nameEl.title=f.name;
+    left.appendChild(icon);left.appendChild(nameEl);
+    entry.appendChild(left);
+    folderTabContentEl.appendChild(entry);
+    entry.onclick=async(e)=>{
+      e.stopPropagation();
+      console.log('Folder clicked in tab:',f.name);
+      selectEntry(entry);
+      const folderPath=tab.path+'/'+f.name;
+      createFolderTab(folderPath,f.name);
+    };
+    entry.addEventListener('contextmenu',e=>{
+      e.preventDefault();
+      console.log('Context menu on folder in tab:',f.name);
+      selectEntry(entry);
+      showContextMenu(e,f.name,true,tab.path);
+    });
+  });
+  fileEntries.sort((a,b)=>a.name.localeCompare(b.name));
+  fileEntries.forEach(f=>{
+    const entry=document.createElement('div');
+    entry.className='file';
+    entry.style.paddingLeft='20px';
+    const left=document.createElement('div');left.className='entry-left';
+    const icon=document.createElement('span');icon.className='icon';icon.textContent=getIcon(f.name,false);
+    const nameEl=document.createElement('span');nameEl.className='name';nameEl.textContent=f.name;nameEl.title=f.name;
+    left.appendChild(icon);left.appendChild(nameEl);
+    entry.appendChild(left);
+    folderTabContentEl.appendChild(entry);
+    entry.onclick=async()=>{
+      console.log('File clicked in tab:',tab.path,f.name);
+      selectEntry(entry);
+      const data=await apiRead(tab.path,f.name);
+      if(!data.error){
+        createFileTab(tab.path,f.name,data.content);
+      }else{
+        console.error('Error reading file:',data.error);
+      }
+    };
+    entry.addEventListener('contextmenu',e=>{
+      e.preventDefault();
+      console.log('Context menu on file in tab:',f.name);
+      selectEntry(entry);
+      showContextMenu(e,f.name,false,tab.path);
+    });
+  });
+  ensureRightPanelVisible('activateFolderTab');
+}
+function closeFolderTab(id){
+  console.log('Closing folder tab:',id);
+  const idx=folderTabs.findIndex(t=>t.id===id);
+  if(idx<0)return;
+  const closingWasActive=(activeFolderTabId===id);
+  folderTabs.splice(idx,1);
+  $('#folder-tab-'+id)?.remove();
+  if(closingWasActive){
+    if(folderTabs.length){
+      console.log('Activating first remaining folder tab:',folderTabs[0].id);
+      activateFolderTab(folderTabs[0].id);
+    }else{
+      console.log('No folder tabs left, clearing content');
+      folderTabContentEl.innerHTML='<em>Aucun dossier ouvert</em>';
+      folderTabContentEl.classList.remove('has-files');
+      activeFolderTabId=null;
+    }
+  }
+  refreshFolderTabsDom();
+  ensureRightPanelVisible('closeFolderTab');
+}
+function searchInOpenTabs(query){
+  console.log('Searching in open tabs for query:',query);
+  folderPanel.innerHTML='';
+  folderPathEl.textContent=query?`Résultats pour "${query}"`:'Résultats de recherche';
+  if(!query){
+    folderPanel.innerHTML='<em>Entrez une requête pour rechercher</em>';
+    folderPanelContainer.classList.remove('collapsed');
+    $('#toggleFolderPanelBtn').style.display='block';
+    $('#restoreFolderPanelBtn').style.display='none';
+    ensureRightPanelVisible('searchInOpenTabs no query');
+    return;
+  }
+  const results=[];
+  tabs.forEach(tab=>{
+    if(tab.type!=='file')return;
+    const content=tab.content;
+    const q=query.toLowerCase();
+    const escaped=q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const lines=content.split('\n');
+    let matchCount=0;
+    const matches=[];
+    lines.forEach((line,index)=>{
+      if(line.toLowerCase().includes(q)){
+        matchCount++;
+        matches.push({lineNumber:index+1,lineContent:line});
+      }
+    });
+    if(matchCount>0){
+      results.push({tab,count:matchCount,matches});
+    }
+  });
+  if(results.length===0){
+    const em=document.createElement('em');
+    em.textContent='Aucun résultat trouvé';
+    folderPanel.appendChild(em);
+    folderPanelContainer.classList.remove('collapsed');
+    $('#toggleFolderPanelBtn').style.display='block';
+    $('#restoreFolderPanelBtn').style.display='none';
+    ensureRightPanelVisible('searchInOpenTabs no results');
+    return;
+  }
+  results.sort((a,b)=>a.tab.name.localeCompare(b.tab.name));
+  results.forEach(res=>{
+    const resultContainer=document.createElement('div');
+    resultContainer.className='search-result';
+    const header=document.createElement('div');
+    header.innerHTML=`<span>${res.tab.name} (dans ${res.tab.path||'/'}) : ${res.count} occurrence(s)</span>`;
+    resultContainer.appendChild(header);
+    const contextContainer=document.createElement('pre');
+    contextContainer.style.display='none';
+    res.matches.forEach(match=>{
+      const lineEl=document.createElement('div');
+      lineEl.className='search-line';
+      lineEl.dataset.line=match.lineNumber;
+      lineEl.dataset.tabId=res.tab.id;
+      lineEl.dataset.path=res.tab.path;
+      lineEl.textContent=`Ligne ${match.lineNumber}: ${match.lineContent}`;
+      contextContainer.appendChild(lineEl);
+      lineEl.addEventListener('click',e=>{
+        e.stopPropagation();
+        selectEntry(lineEl);
+        console.log('Single click on search result, tab:',res.tab.id,'line:',match.lineNumber);
+        activateTab(res.tab.id);
+        const lineNumber=parseInt(lineEl.dataset.line)-1;
+        cm.setCursor({line:lineNumber,ch:0});
+        cm.scrollIntoView({line:lineNumber,ch:0},100);
+        if(highlightedLineMarker){
+          highlightedLineMarker.clear();
+        }
+        ensureRightPanelVisible('search result click');
+      });
+      lineEl.addEventListener('dblclick',e=>{
+        e.stopPropagation();
+        selectEntry(lineEl);
+        console.log('Double click on search result, tab:',res.tab.id,'line:',match.lineNumber);
+        activateTab(res.tab.id);
+        const lineNumber=parseInt(lineEl.dataset.line)-1;
+        cm.setCursor({line:lineNumber,ch:0});
+        cm.scrollIntoView({line:lineNumber,ch:0},100);
+        if(highlightedLineMarker){
+          highlightedLineMarker.clear();
+        }
+        const doc=cm.getDoc();
+        const lineLength=doc.getLine(lineNumber).length;
+        highlightedLineMarker=doc.markText(
+          {line:lineNumber,ch:0},
+          {line:lineNumber,ch:lineLength},
+          {className:'cm-highlight-line'}
+        );
+        ensureRightPanelVisible('search result double-click');
+      });
+      lineEl.addEventListener('contextmenu',e=>{
+        e.preventDefault();
+        selectEntry(lineEl);
+        console.log('Context menu on search result:',res.tab.name);
+        showContextMenu(e,res.tab.name,false,res.tab.path);
+      });
+    });
+    resultContainer.appendChild(contextContainer);
+    header.addEventListener('click',()=>{
+      contextContainer.style.display=contextContainer.style.display==='none'?'block':'none';
+      ensureRightPanelVisible('search result header click');
+    });
+    folderPanel.appendChild(resultContainer);
+  });
+  folderPanelContainer.classList.remove('collapsed');
+  $('#toggleFolderPanelBtn').style.display='block';
+  $('#restoreFolderPanelBtn').style.display='none';
+  ensureRightPanelVisible('searchInOpenTabs results');
+}
+const tabsEl=$('#tabs');
+function renderTabElement(tab){
+  const tabEl=document.createElement('div');
+  tabEl.className='tab'+(tab.id===activeTabId?' active':'');
+  tabEl.id='tab-'+tab.id;
+  const icon=document.createElement('span');icon.className='icon';icon.textContent=getIcon(tab.name,false);
+  const label=document.createElement('span');
+  label.textContent=tab.name;
+  tabEl.appendChild(icon);
+  tabEl.appendChild(label);
+  const close=document.createElement('span');close.className='close';close.textContent='×';
+  close.onclick=e=>{
+    e.stopPropagation();
+    console.log('Closing tab via close button:',tab.id);
+    closeTab(tab.id);
+  };
+  tabEl.appendChild(close);
+  tabEl.onclick=()=>{
+    console.log('Activating tab via click:',tab.id);
+    activateTab(tab.id);
+  };
+  return tabEl;
+}
+function refreshTabsDom(){
+  console.log('Refreshing tabs, total:',tabs.length);
+  tabsEl.innerHTML='';
+  tabs.forEach(t=>tabsEl.appendChild(renderTabElement(t)));
+  ensureRightPanelVisible('refreshTabsDom');
+}
+function createFileTab(path,name,content){
+  console.log('Creating tab for:',path,name,'Content length:',content.length);
+  const existing=tabs.find(t=>t.type==='file'&&t.path===path&&t.name===name);
+  if(existing){
+    console.log('Tab already exists, activating:',existing.id);
+    activateTab(existing.id);
+    return;
+  }
+  const id=uid();
+  const mode=detectMode(name);
+  const tab={id,path,name,type:'file',content:content||'',saved:true,mode,markers:[]};
+  tabs.push(tab);
+  console.log('New tab created, total tabs:',tabs.length);
+  refreshTabsDom();
+  activateTab(id,true);
+}
+function activateTab(id,force=false){
+  console.log('Activating tab:',id);
+  tabs.forEach(t=>{const el=$('#tab-'+t.id);if(el)el.classList.remove('active');});
+  const tab=tabs.find(t=>t.id===id);
+  if(!tab){
+    console.error('Tab not found:',id);
+    return;
+  }
+  const el=$('#tab-'+id);
+  if(el)el.classList.add('active');
+  activeTabId=id;
+  if(highlightedLineMarker){
+    highlightedLineMarker.clear();
+    highlightedLineMarker=null;
+  }
+  if(tab.type==='file'){
+    console.log('Setting editor content, length:',tab.content.length);
+    cm.setValue(tab.content||'');
+    cm.setOption('mode',tab.mode);
+    updateBlockMarkers(tab);
+    setStatus(tab.path+'/'+tab.name,tab.mode,tab.saved);
+    $('#modeSelect').value=typeof tab.mode==='string'?tab.mode:tab.mode.name||'text/plain';
+    currentPath=tab.path;
+    const lines=tab.content.split('\n');
+    const maxLineLength=Math.max(...lines.map(line=>line.length));
+    if(maxLineLength>1000){
+      console.warn('Long line detected, length:',maxLineLength);
+    }
+    cm.refresh();
+  }
+  const query=globalSearchInput.value;
+  if(query)searchInOpenTabs(query);
+  ensureRightPanelVisible('activateTab');
+}
+function closeTab(id){
+  console.log('Closing tab:',id);
+  const idx=tabs.findIndex(t=>t.id===id);
+  if(idx<0)return;
+  const closingWasActive=(activeTabId===id);
+  const tab=tabs[idx];
+  if(tab.markers)tab.markers.forEach(marker=>marker.clear());
+  if(highlightedLineMarker){
+    highlightedLineMarker.clear();
+    highlightedLineMarker=null;
+  }
+  tabs.splice(idx,1);
+  $('#tab-'+id)?.remove();
+  if(closingWasActive){
+    if(tabs.length){
+      console.log('Activating first remaining tab:',tabs[0].id);
+      activateTab(tabs[0].id);
+    }else{
+      console.log('No tabs left, resetting editor');
+      cm.setValue('');
+      cm.setOption('mode','text/plain');
+      setStatus('','text/plain',true);
+      activeTabId=null;
+      $('#modeSelect').value='text/plain';
+    }
+  }
+  refreshTabsDom();
+  const query=globalSearchInput.value;
+  if(query)searchInOpenTabs(query);
+}
+const contextMenu=$('#contextMenu');
+function showContextMenu(e,name,isDir,path){
+  console.log('Showing context menu for:',name,'isDir:',isDir,'path:',path);
+  contextMenu.style.left=e.pageX+'px';
+  contextMenu.style.top=e.pageY+'px';
+  contextMenu.dataset.targetName=name;
+  contextMenu.dataset.targetIsDir=isDir?'true':'false';
+  contextMenu.dataset.targetPath=path;
+  contextMenu.style.display='block';
+  ensureRightPanelVisible('showContextMenu');
+}
+contextMenu.querySelectorAll('.item').forEach(item=>{
+  item.onclick=async()=>{
+    const name=contextMenu.dataset.targetName;
+    const isDir=contextMenu.dataset.targetIsDir==='true';
+    const path=contextMenu.dataset.targetPath;
+    console.log('Context menu action:',item.dataset.action,'on:',name);
+    contextMenu.style.display='none';
+    switch(item.dataset.action){
+      case'open':
+        if(!isDir){
+          const data=await apiRead(path,name);
+          if(!data.error){
+            console.log('Opening file from context menu:',name);
+            createFileTab(path,name,data.content);
+          }else{
+            console.error('Error opening file:',data.error);
+          }
+        }else{
+          console.log('Opening folder from context menu:',name);
+          const folderPath=path?path+'/'+name:name;
+          createFolderTab(folderPath,name);
+        }
+        break;
+      case'rename':{
+        const newName=prompt('Nouveau nom',name);
+        if(newName&&newName!==name){
+          const res=await apiRename(path,name,newName);
+          if(res.ok){
+            console.log('Renamed:',name,'to:',newName);
+            buildTree(path);
+            const query=globalSearchInput.value;
+            if(query)searchInOpenTabs(query);
+            const tab=tabs.find(t=>t.path===path&&t.name===name);
+            if(tab){
+              tab.name=newName;
+              tab.mode=detectMode(newName);
+              updateBlockMarkers(tab);
+              refreshTabsDom();
+              if(activeTabId===tab.id){
+                cm.setOption('mode',tab.mode);
+                setStatus(path+'/'+newName,tab.mode,tab.saved);
+                $('#modeSelect').value=typeof tab.mode==='string'?tab.mode:tab.mode.name||'text/plain';
+              }
+            }
+            const folderTab=folderTabs.find(t=>t.path===path+'/'+name);
+            if(folderTab){
+              folderTab.name=newName;
+              folderTab.path=path+'/'+newName;
+              refreshFolderTabsDom();
+              if(activeFolderTabId===folderTab.id){
+                activateFolderTab(folderTab.id);
+              }
+            }
+            ensureRightPanelVisible('rename');
+          }else{
+            console.error('Rename error:',res.error);
+            alert(res.error||'Erreur lors du renommage');
+          }
+        }
+        break;
+      }
+      case'delete':
+        if(confirm(`Déplacer "${name}" vers la corbeille ?`)){
+          const res=await apiTrash(path,name);
+          if(res.ok){
+            console.log('Deleted:',name);
+            buildTree(path);
+            const query=globalSearchInput.value;
+            if(query)searchInOpenTabs(query);
+            const tabIdx=tabs.findIndex(t=>t.path===path&&t.name===name);
+            if(tabIdx>=0)closeTab(tabs[tabIdx].id);
+            const folderTabIdx=folderTabs.findIndex(t=>t.path===path+'/'+name);
+            if(folderTabIdx>=0)closeFolderTab(folderTabs[folderTabIdx].id);
+            ensureRightPanelVisible('delete');
+          }else{
+            console.error('Delete error:',res.error);
+            alert(res.error||'Erreur lors du déplacement vers la corbeille');
+          }
+        }
+        break;
+      case'cut':{
+        const res=await apiCut(path,name);
+        if(res.ok){
+          clipboard={type:'cut',path,name,isDir};
+          console.log('Cut:',name);
+        }else{
+          console.error('Cut error:',res.error);
+          alert(res.error||'Erreur lors du couper');
+        }
+        ensureRightPanelVisible('cut');
+        break;
+      }
+      case'copy':{
+        const res=await apiCopy(path,name);
+        if(res.ok){
+          clipboard={type:'copy',path,name,isDir};
+          console.log('Copy:',name);
+        }else{
+          console.error('Copy error:',res.error);
+          alert(res.error||'Erreur lors de la copie');
+        }
+        ensureRightPanelVisible('copy');
+        break;
+      }
+      case'paste':
+        if(!clipboard){
+          console.warn('Nothing in clipboard');
+          return alert('Rien dans le presse-papiers');
+        }
+        const res=await apiPaste(path);
+        if(res.ok){
+          console.log('Pasted to:',path);
+          clipboard=null;
+          buildTree(path);
+          const query=globalSearchInput.value;
+          if(query)searchInOpenTabs(query);
+          if(activeFolderTabId){
+            const activeFolderTab=folderTabs.find(t=>t.id===activeFolderTabId);
+            if(activeFolderTab&&activeFolderTab.path===path){
+              activateFolderTab(activeFolderTab.id);
+            }
+          }
+          ensureRightPanelVisible('paste');
+        }else{
+          console.error('Paste error:',res.error);
+          alert(res.error||'Erreur lors du collage');
+        }
+        break;
+    }
+  };
+});
+document.addEventListener('click',()=>{
+  console.log('Hiding context menu via document click');
+  contextMenu.style.display='none';
+  ensureRightPanelVisible('contextMenu hide');
+});
+function setupButtonListeners(){
+  const newFileBtn=$('#newFileBtn');
+  const newFolderBtn=$('#newFolderBtn');
+  const renameBtn=$('#renameBtn');
+  const deleteBtn=$('#deleteBtn');
+  const saveAllBtn=$('#saveAllBtn');
+  const searchBtn=$('#searchBtn');
+  const modeSelect=$('#modeSelect');
+  const themeSelect=$('#themeSelect');
+  if(!newFileBtn||!newFolderBtn||!renameBtn||!deleteBtn||!saveAllBtn||!searchBtn||!modeSelect||!themeSelect){
+    console.error('Button initialization failed, some buttons not found');
+    return;
+  }
+  newFileBtn.onclick=async()=>{
+    const name=prompt('Nom du nouveau fichier','nouveau.php');
+    if(name){
+      const res=await apiWrite(currentPath,name,'');
+      if(res.ok){
+        console.log('Created new file:',name);
+        buildTree(currentPath);
+        const query=globalSearchInput.value;
+        if(query)searchInOpenTabs(query);
+        createFileTab(currentPath,name,'');
+        if(activeFolderTabId){
+          const activeFolderTab=folderTabs.find(t=>t.id===activeFolderTabId);
+          if(activeFolderTab&&activeFolderTab.path===currentPath){
+            activateFolderTab(activeFolderTab.id);
+          }
+        }
+        ensureRightPanelVisible('newFileBtn');
+      }else{
+        console.error('New file error:',res.error);
+        alert(res.error||'Erreur lors de la création du fichier');
+      }
+    }
+  };
+  newFolderBtn.onclick=async()=>{
+    const name=prompt('Nom du nouveau dossier','nouveau_dossier');
+    if(name){
+      const res=await apiMkdir(currentPath,name);
+      if(res.ok){
+        console.log('Created new folder:',name);
+        buildTree(currentPath);
+        const query=globalSearchInput.value;
+        if(query)searchInOpenTabs(query);
+        if(activeFolderTabId){
+          const activeFolderTab=folderTabs.find(t=>t.id===activeFolderTabId);
+          if(activeFolderTab&&activeFolderTab.path===currentPath){
+            activateFolderTab(activeFolderTab.id);
+          }
+        }
+        ensureRightPanelVisible('newFolderBtn');
+      }else{
+        console.error('New folder error:',res.error);
+        alert(res.error||'Erreur lors de la création du dossier');
+      }
+    }
+  };
+  renameBtn.onclick=async()=>{
+    if(!selectedEntry){
+      console.warn('No entry selected for rename');
+      return alert('Veuillez sélectionner un fichier ou dossier');
+    }
+    const isDir=selectedEntry.classList.contains('folder');
+    const name=selectedEntry.querySelector('.name')?.textContent||selectedEntry.textContent.replace(/^(📁|📄|🐘|🌐|🎨|🟨|📋|🔧|🐍|📝)\s*/,'');
+    const path=selectedEntry.dataset.path||currentPath;
+    console.log('Renaming:',name,'in path:',path);
+    const newName=prompt('Nouveau nom',name);
+    if(newName&&newName!==name){
+      const res=await apiRename(path,name,newName);
+      if(res.ok){
+        console.log('Renamed:',name,'to:',newName);
+        buildTree(path);
+        const query=globalSearchInput.value;
+        if(query)searchInOpenTabs(query);
+        const tab=tabs.find(t=>t.path===path&&t.name===name);
+        if(tab){
+          tab.name=newName;
+          tab.mode=detectMode(newName);
+          updateBlockMarkers(tab);
+          refreshTabsDom();
+          if(activeTabId===tab.id){
+            cm.setOption('mode',tab.mode);
+            setStatus(path+'/'+newName,tab.mode,tab.saved);
+            $('#modeSelect').value=typeof tab.mode==='string'?tab.mode:tab.mode.name||'text/plain';
+          }
+        }
+        const folderTab=folderTabs.find(t=>t.path===path+'/'+name);
+        if(folderTab){
+          folderTab.name=newName;
+          folderTab.path=path+'/'+newName;
+          refreshFolderTabsDom();
+          if(activeFolderTabId===folderTab.id){
+            activateFolderTab(folderTab.id);
+          }
+        }
+        if(activeFolderTabId){
+          const activeFolderTab=folderTabs.find(t=>t.id===activeFolderTabId);
+          if(activeFolderTab&&activeFolderTab.path===path){
+            activateFolderTab(activeFolderTab.id);
+          }
+        }
+        ensureRightPanelVisible('renameBtn');
+      }else{
+        console.error('Rename error:',res.error);
+        alert(res.error||'Erreur lors du renommage');
+      }
+    }
+  };
+  deleteBtn.onclick=async()=>{
+    if(!selectedEntry){
+      console.warn('No entry selected for delete');
+      return alert('Veuillez sélectionner un fichier ou dossier');
+    }
+    const name=selectedEntry.querySelector('.name')?.textContent||selectedEntry.textContent.replace(/^(📁|📄|🐘|🌐|🎨|🟨|📋|🔧|🐍|📝)\s*/,'');
+    const path=selectedEntry.dataset.path||currentPath;
+    console.log('Deleting:',name,'in path:',path);
+    if(confirm(`Déplacer "${name}" vers la corbeille ?`)){
+      const res=await apiTrash(path,name);
+      if(res.ok){
+        console.log('Deleted:',name);
+        buildTree(path);
+        const query=globalSearchInput.value;
+        if(query)searchInOpenTabs(query);
+        const tabIdx=tabs.findIndex(t=>t.path===path&&t.name===name);
+        if(tabIdx>=0)closeTab(tabs[tabIdx].id);
+        const folderTabIdx=folderTabs.findIndex(t=>t.path===path+'/'+name);
+        if(folderTabIdx>=0)closeFolderTab(folderTabs[folderTabIdx].id);
+        if(activeFolderTabId){
+          const activeFolderTab=folderTabs.find(t=>t.id===activeFolderTabId);
+          if(activeFolderTab&&activeFolderTab.path===path){
+            activateFolderTab(activeFolderTab.id);
+          }
+        }
+        ensureRightPanelVisible('deleteBtn');
+      }else{
+        console.error('Delete error:',res.error);
+        alert(res.error||'Erreur lors du déplacement vers la corbeille');
+      }
+    }
+  };
+  saveAllBtn.onclick=async()=>{
+    console.log('Saving all tabs');
+    let savedCount=0;
+    for(const tab of tabs){
+      if(tab.type==='file'&&!tab.saved){
+        const res=await apiWrite(tab.path,tab.name,tab.content);
+        if(res.ok){
+          tab.saved=true;
+          if(activeTabId===tab.id)setStatus(tab.path+'/'+tab.name,tab.mode,true);
+          savedCount++;
+        }else{
+          console.error('Save error for:',tab.name,res.error);
+          alert(`Erreur lors de la sauvegarde de ${tab.name}: ${res.error||'Erreur'}`);
+        }
+      }
+    }
+    alert(savedCount?`${savedCount} fichier(s) sauvegardé(s)`:'Aucun fichier à sauvegarder');
+    const query=globalSearchInput.value;
+    if(query)searchInOpenTabs(query);
+    ensureRightPanelVisible('saveAllBtn');
+  };
+  modeSelect.onchange=()=>{
+    try{
+      const newMode=modeSelect.value;
+      cm.setOption('mode',newMode);
+      if(activeTabId){
+        const tab=tabs.find(t=>t.id===activeTabId);
+        if(tab&&tab.type==='file'){
+          tab.mode=newMode;
+          updateBlockMarkers(tab);
+          setStatus(tab.path+'/'+tab.name,tab.mode,tab.saved);
+        }
+      }
+      ensureRightPanelVisible('modeSelect change');
+    }catch(e){
+      console.error('Mode change error',e);
+    }
+  };
+  themeSelect.onchange=()=>{
+    try{
+      const newTheme=themeSelect.value;
+      cm.setOption('theme',newTheme);
+      ensureRightPanelVisible('themeSelect change');
+    }catch(e){
+      console.error('Theme change error',e);
+    }
+  };
+  searchBtn.onclick=()=>{
+    try{
+      CodeMirror.commands.find(cm);
+      ensureRightPanelVisible('searchBtn');
+    }catch(e){
+      console.error('Search error',e);
+    }
+  };
+  globalSearchInput.addEventListener('input',()=>{
+    console.log('Global search input:',globalSearchInput.value);
+    searchInOpenTabs(globalSearchInput.value);
+  });
+}
+function toggleRightPanel(){
+  const panel=$('#rightPanel');
+  const toggleBtn=$('#toggleRightPanelBtn');
+  console.log('Toggling right panel, current state:',panel.classList.contains('collapsed')?'collapsed':'visible');
+  if(panel.classList.contains('collapsed')){
+    panel.classList.remove('collapsed');
+    toggleBtn.textContent='◄';
+  }else{
+    panel.classList.add('collapsed');
+    toggleBtn.textContent='►';
+  }
+}
+function toggleFolderPanel(){
+  const panel=$('#folderPanelContainer');
+  const toggleBtn=$('#toggleFolderPanelBtn');
+  const restoreBtn=$('#restoreFolderPanelBtn');
+  console.log('Toggling folder panel, current state:',panel.classList.contains('collapsed')?'collapsed':'visible');
+  if(panel.classList.contains('collapsed')){
+    panel.classList.remove('collapsed');
+    toggleBtn.style.display='block';
+    restoreBtn.style.display='none';
+  }else{
+    panel.classList.add('collapsed');
+    toggleBtn.style.display='none';
+    restoreBtn.style.display='block';
+  }
+  ensureRightPanelVisible('toggleFolderPanel');
+}
+function toggleFolderTabPanel(){
+  const panel=$('#folderTabContainer');
+  const restoreBtn=$('#restoreFolderTabBtn');
+  console.log('Toggling folder tab panel, current state:',panel.classList.contains('collapsed')?'collapsed':'visible');
+  if(panel.classList.contains('collapsed')){
+    panel.classList.remove('collapsed');
+    restoreBtn.style.display='none';
+  }else{
+    panel.classList.add('collapsed');
+    restoreBtn.style.display='block';
+  }
+  ensureRightPanelVisible('toggleFolderTabPanel');
+}
+$('#toggleRightPanelBtn').onclick=()=>{
+  console.log('Toggle right panel button clicked');
+  toggleRightPanel();
+};
+$('#toggleFolderPanelBtn').onclick=toggleFolderPanel;
+$('#restoreFolderPanelBtn').onclick=toggleFolderPanel;
+$('#restoreFolderTabBtn').onclick=toggleFolderTabPanel;
+function setupKeyboardNavigation(){
+  fileTreeEl.tabIndex=0;
+  fileTreeEl.addEventListener('keydown',e=>{
+    const entries=$all('.file,.folder');
+    if(!entries.length)return;
+    let currentIndex=entries.indexOf(selectedEntry)||0;
+    switch(e.key){
+      case'ArrowDown':
+        e.preventDefault();
+        currentIndex=Math.min(currentIndex+1,entries.length-1);
+        selectEntry(entries[currentIndex]);
+        entries[currentIndex].scrollIntoView({block:'nearest'});
+        break;
+      case'ArrowUp':
+        e.preventDefault();
+        currentIndex=Math.max(currentIndex-1,0);
+        selectEntry(entries[currentIndex]);
+        entries[currentIndex].scrollIntoView({block:'nearest'});
+        break;
+      case'ArrowRight':
+        if(selectedEntry.classList.contains('folder')){
+          e.preventDefault();
+          selectedEntry.click();
+        }
+        break;
+      case'ArrowLeft':
+        const pathParts=currentPath.split('/').filter(p=>p);
+        const parentPath=pathParts.slice(0,-1).join('/')||'';
+        buildTree(parentPath);
+        break;
+      case'Enter':
+        e.preventDefault();
+        selectedEntry.click();
+        break;
+    }
+    ensureRightPanelVisible('keyboard navigation');
+  });
+}
+explorerSearchInput.addEventListener('input',()=>{
+  const query=explorerSearchInput.value.toLowerCase();
+  console.log('Explorer search query:',query);
+  buildTree(currentPath);
+});
+document.addEventListener('DOMContentLoaded',()=>{
+  console.log('Initializing application');
+  setupButtonListeners();
+  setupKeyboardNavigation();
+  buildTree('');
+  searchInOpenTabs('');
+  folderTabContentEl.innerHTML='<em>Aucun dossier ouvert</em>';
+  ensureRightPanelVisible('DOMContentLoaded');
+  monitorRightPanel();
+  const treeObserver=new MutationObserver(()=>{
+    console.log('File tree DOM changed, ensuring right panel visibility');
+    ensureRightPanelVisible('fileTree mutation');
+  });
+  treeObserver.observe(fileTreeEl,{childList:true,subtree:true});
+});
+window.addEventListener('resize',()=>{
+  console.log('Window resized, checking right panel visibility');
+  ensureRightPanelVisible('window resize');
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+2025-08-27 23:53:37 - Script move_to_recycle.php démarré
+2025-08-27 23:53:37 - Tentative de déplacement: sourcePath=C:\xampp\htdocs\site\win3\excel-web\excel.html, recyclePath=C:\xampp\htdocs\site\win3\trash\excel.html
+2025-08-27 23:53:37 - Fichier introuvable: C:\xampp\htdocs\site\win3\excel-web\excel.html
+2025-08-27 23:53:49 - Script move_to_recycle.php démarré
+2025-08-27 23:53:49 - Tentative de déplacement: sourcePath=C:\xampp\htdocs\site\win3\excel-web\excel.html, recyclePath=C:\xampp\htdocs\site\win3\trash\excel.html
+2025-08-27 23:53:49 - Fichier introuvable: C:\xampp\htdocs\site\win3\excel-web\excel.html
+2025-08-27 23:54:00 - Script move_to_recycle.php démarré
+2025-08-27 23:54:00 - Tentative de déplacement: sourcePath=C:\xampp\htdocs\site\win3\excel-web\excel.html, recyclePath=C:\xampp\htdocs\site\win3\trash\excel.html
+2025-08-27 23:54:00 - Fichier introuvable: C:\xampp\htdocs\site\win3\excel-web\excel.html
+2025-08-28 00:00:58 - Script move_to_recycle.php démarré
+2025-08-28 00:00:58 - Tentative de déplacement du dossier: sourcePath=C:\xampp\htdocs\site\win3\, recyclePath=C:\xampp\htdocs\site\win3\trash\
+2025-08-28 00:00:58 - Dossier existe dans la corbeille, nouveau chemin: C:\xampp\htdocs\site\win3\trash\_1
+2025-08-28 00:00:58 - Échec du déplacement: C:\xampp\htdocs\site\win3\ -> C:\xampp\htdocs\site\win3\trash\_1
+2025-08-28 00:03:43 - Script move_to_recycle.php démarré
+2025-08-28 00:03:43 - Tentative de déplacement: sourcePath=C:/xampp/htdocs/site/win3/excel-web, recyclePath=C:/xampp/htdocs/site/win3/trash/excel-web
+2025-08-28 00:03:43 - Fichier introuvable: C:/xampp/htdocs/site/win3/excel-web
+2025-08-28 00:03:49 - Script move_to_recycle.php démarré
+2025-08-28 00:03:49 - Tentative de déplacement: sourcePath=C:/xampp/htdocs/site/win3/excel-web, recyclePath=C:/xampp/htdocs/site/win3/trash/excel-web
+2025-08-28 00:03:49 - Fichier introuvable: C:/xampp/htdocs/site/win3/excel-web
+2025-08-28 00:07:01 - Script move_to_recycle.php démarré
+2025-08-28 00:07:01 - Tentative de déplacement: sourcePath=C:/xampp/htdocs/site/win3/excel-web, recyclePath=C:/xampp/htdocs/site/win3/trash/excel-web
+2025-08-28 00:07:01 - Fichier introuvable: C:/xampp/htdocs/site/win3/excel-web
+2025-08-28 00:12:05 - Script move_to_recycle.php démarré
+2025-08-28 00:12:05 - Paramètres reçus: app=excel, path=/excel-web
+2025-08-28 00:12:05 - Chemins calculés: sourcePath=C:\xampp\htdocs\site\win3\excel-web, realSourcePath=null, recyclePath=C:\xampp\htdocs\site\win3\trash\excel-web
+2025-08-28 00:12:05 - Dossier introuvable ou n'est pas un dossier: C:\xampp\htdocs\site\win3\excel-web
+2025-08-28 00:12:12 - Script move_to_recycle.php démarré
+2025-08-28 00:12:12 - Paramètres reçus: app=excel, path=/excel-web
+2025-08-28 00:12:12 - Chemins calculés: sourcePath=C:\xampp\htdocs\site\win3\excel-web, realSourcePath=null, recyclePath=C:\xampp\htdocs\site\win3\trash\excel-web
+2025-08-28 00:12:12 - Dossier introuvable ou n'est pas un dossier: C:\xampp\htdocs\site\win3\excel-web
+2025-08-28 00:12:28 - Script move_to_recycle.php démarré
+2025-08-28 00:12:28 - Paramètres reçus: app=excel, path=/excel-web
+2025-08-28 00:12:28 - Chemins calculés: sourcePath=C:\xampp\htdocs\site\win3\excel-web, realSourcePath=null, recyclePath=C:\xampp\htdocs\site\win3\trash\excel-web
+2025-08-28 00:12:28 - Dossier introuvable ou n'est pas un dossier: C:\xampp\htdocs\site\win3\excel-web
+2025-08-28 00:13:09 - Script move_to_recycle.php démarré
+2025-08-28 00:13:09 - Paramètres reçus: app=, path=
+2025-08-28 00:13:09 - Paramètres manquants: app=, path=
+2025-08-28 00:14:05 - Script move_to_recycle.php démarré
+2025-08-28 00:14:05 - Paramètres reçus: app=excel, path=/excel-web
+2025-08-28 00:14:05 - Chemins calculés: sourcePath=C:\xampp\htdocs\site\win3\excel-web, realSourcePath=null, recyclePath=C:\xampp\htdocs\site\win3\trash\excel-web
+2025-08-28 00:14:05 - Dossier introuvable ou n'est pas un dossier: C:\xampp\htdocs\site\win3\excel-web

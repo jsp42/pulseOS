@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Corbeille</title>
+<style>
+body { margin:0; font-family:Arial,sans-serif; height:100vh; display:flex; background:#1e1e2e; color:white; }
+#sidebar { width:300px; background:#282c34; padding:10px; overflow-y:auto; display:flex; flex-direction:column; }
+#sidebar h3 { margin:10px 0 5px; }
+#fileList { flex:1; margin-bottom:10px; border:1px solid #444; border-radius:5px; padding:5px; background:#1b1b2a; overflow:auto; }
+.fileItem { padding:6px 8px; cursor:pointer; border-radius:3px; }
+.fileItem:hover { background:#505661; }
+.fileItem.selected { background:#61afef; color:black; }
+#actions { margin-bottom:10px; }
+#actions button { padding:8px 12px; margin-right:5px; background:#3a3f4b; border:none; color:white; cursor:pointer; border-radius:4px; }
+#actions button:hover { background:#61afef; }
+#selectedFile { margin-top:5px; font-size:1em; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h3>Corbeille</h3>
+    <div id="fileList">Chargement...</div>
+</div>
+
+<div id="actionsPanel" style="flex:1; padding:10px;">
+    <h3>Actions</h3>
+    <div id="actions">
+        <button onclick="restoreFile()">Restaurer</button>
+        <button onclick="deletePermanent()">Supprimer définitivement</button>
+        <button onclick="refresh()">Rafraîchir</button>
+    </div>
+    <p id="selectedFile">Aucun fichier sélectionné</p>
+</div>
+
+<script>
+let selectedFile = null;
+
+// --- Charger les fichiers de la corbeille ---
+async function loadFiles(){
+    const res = await fetch('explorer.php?action=listTrash');
+    const files = await res.json();
+    const container = document.getElementById('fileList');
+    container.innerHTML = '';
+    files.forEach(f=>{
+        const div = document.createElement('div');
+        div.className = 'fileItem';
+        div.textContent = f;
+        div.onclick = () => {
+            document.querySelectorAll('.fileItem').forEach(el=>el.classList.remove('selected'));
+            div.classList.add('selected');
+            selectedFile = f;
+            document.getElementById('selectedFile').textContent = 'Sélectionné : '+f;
+        };
+        div.oncontextmenu = (e)=>{
+            e.preventDefault();
+            const action = prompt(`Options pour "${f}":\n1 = Restaurer\n2 = Supprimer définitivement`);
+            if(action==='1') restoreFile();
+            else if(action==='2') deletePermanent();
+        };
+        container.appendChild(div);
+    });
+}
+
+// --- Restaurer ---
+function restoreFile(){
+    if(!selectedFile) return alert("Aucun fichier sélectionné !");
+    const form = new URLSearchParams();
+    form.append('file',selectedFile);
+    fetch('explorer.php?action=restore',{method:'POST',body:form})
+    .then(res=>res.json())
+    .then(data=>{
+        if(data.status==='success'){
+            alert('Fichier restauré');
+            selectedFile=null;
+            loadFiles();
+            document.getElementById('selectedFile').textContent='Aucun fichier sélectionné';
+        } else alert(data.message);
+    });
+}
+
+// --- Supprimer définitivement ---
+function deletePermanent(){
+    if(!selectedFile) return alert("Aucun fichier sélectionné !");
+    if(!confirm('Supprimer définitivement "'+selectedFile+'"?')) return;
+    const form = new URLSearchParams();
+    form.append('file',selectedFile);
+    fetch('explorer.php?action=deletePermanent',{method:'POST',body:form})
+    .then(res=>res.json())
+    .then(data=>{
+        if(data.status==='success'){
+            alert('Fichier supprimé définitivement');
+            selectedFile=null;
+            loadFiles();
+            document.getElementById('selectedFile').textContent='Aucun fichier sélectionné';
+        } else alert(data.message);
+    });
+}
+
+// --- Rafraîchir ---
+function refresh(){ loadFiles(); }
+
+// --- Initialisation ---
+loadFiles();
+</script>
+
+</body>
+</html>
